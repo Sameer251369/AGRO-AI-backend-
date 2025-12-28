@@ -1,7 +1,6 @@
 from django.urls import path
 from . import views
 
-# Standardized as v1 for better scalability
 urlpatterns = [
     # Disease Data
     path('v1/diseases/', views.diseases_list, name='diseases-list'),
