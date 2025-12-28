@@ -1,0 +1,13 @@
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Django
+db.sqlite3
+media/
+__pycache__/
+*.pyc
+
+# Test images
+test_leaf*.jpg
