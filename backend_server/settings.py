@@ -1,17 +1,18 @@
-from pathlib import Path
 import os
+from pathlib import Path
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SECURITY ---
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
+# In production, set this as an Environment Variable in Railway
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-before-deploying')
 
 # DEBUG should be False in production
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# Railway provides the RAILWAY_PUBLIC_DOMAIN env var automatically
+# Allow Railway domains and local development
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
     ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN'))
@@ -22,7 +23,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.railway.app',
 ]
 
-# Required for HTTPS behind proxy (Railway uses this)
+# Required for HTTPS behind Railway's proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # --- APP DEFINITION ---
@@ -33,16 +34,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Third-party apps
     'rest_framework',
-    'corsheaders',
-    'api',
     'rest_framework.authtoken',
+    'corsheaders',
+    'whitenoise.runserver_nostatic', # Optional: helps whitenoise in dev
+    
+    # Your apps
+    'api',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be below SecurityMiddleware
-    'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be here
+    'corsheaders.middleware.CorsMiddleware',        # Must be above CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -80,43 +86,26 @@ DATABASES = {
     )
 }
 
-# --- PASSWORD VALIDATION ---
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# --- PRODUCTION SECURITY TWEAKS ---
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# --- INTERNATIONALIZATION ---
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
-
-# --- STATIC FILES (WhiteNoise) ---
+# --- STATIC & MEDIA FILES ---
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# WhiteNoise storage: CompressedStaticFilesStorage is safer during development
+# than CompressedManifestStaticFilesStorage because it won't crash on missing files.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # --- CORS ---
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
-
-# If you want to restrict CORS to specific origins in production, use:
-# CORS_ALLOWED_ORIGINS = [
-#     'https://your-frontend-domain.com',
-# ]
 
 # --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
