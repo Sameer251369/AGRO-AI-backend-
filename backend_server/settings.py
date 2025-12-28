@@ -6,21 +6,26 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SECURITY ---
-# In production, set this as an Environment Variable in Railway
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-before-deploying')
 
 # DEBUG should be False in production
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Allow Railway domains and local development
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = [
+    'agro-ai-backend-production-8c2e.up.railway.app',
+    'localhost',
+    '127.0.0.1',
+]
+
 if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
     ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN'))
 
-# CSRF Trusted Origins for Railway
+# CSRF Trusted Origins - Adding Netlify is critical for POST requests
 CSRF_TRUSTED_ORIGINS = [
     'https://agro-ai-backend-production-8c2e.up.railway.app',
     'https://*.railway.app',
+    'https://agroa.netlify.app',  # Added Netlify Production URL
 ]
 
 # Required for HTTPS behind Railway's proxy
@@ -39,7 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-    'whitenoise.runserver_nostatic', # Optional: helps whitenoise in dev
+    'django_filters', # Added to support the filtering backend mentioned in REST_FRAMEWORK
     
     # Your apps
     'api',
@@ -47,8 +52,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be here
-    'corsheaders.middleware.CorsMiddleware',        # Must be above CommonMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    'corsheaders.middleware.CorsMiddleware',        # Must stay above CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -78,7 +83,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend_server.wsgi.application'
 
 # --- DATABASE ---
-# Uses DATABASE_URL from Railway; falls back to SQLite for local dev
 DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
@@ -96,19 +100,21 @@ if not DEBUG:
 # --- STATIC & MEDIA FILES ---
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# WhiteNoise storage: CompressedStaticFilesStorage is safer during development
-# than CompressedManifestStaticFilesStorage because it won't crash on missing files.
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # --- CORS ---
-CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
+# Explicitly allowing your Netlify domain for security
+CORS_ALLOWED_ORIGINS = [
+    "https://agroa.netlify.app",
+    "http://localhost:5173",
+]
 
-# --- REST FRAMEWORK ---
-# --- REST FRAMEWORK ---
+# Fallback to Env Var if you need to toggle "Allow All" for testing
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
+
 # --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -117,17 +123,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
-    # 1. Enable Pagination (Crucial for 10,000 records)
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20, 
-
-    # 2. Enable Search and Filtering
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
     ),
 }
-
 
 # --- DEFAULT PRIMARY KEY FIELD TYPE ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
