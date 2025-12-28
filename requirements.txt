@@ -4,3 +4,6 @@ django-cors-headers
 Pillow
 numpy
 # Add your ML framework here (e.g., torch, tensorflow) when integrating a real model
+gunicorn
+whitenoise
+dj-database-url

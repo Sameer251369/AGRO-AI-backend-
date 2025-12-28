@@ -1,22 +1,22 @@
 from pathlib import Path
 import os
-
-# make dotenv optional for local dev
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# use environment variables
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-replace-this-with-secure-key')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# --- SECURITY ---
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
 
-# Application definition
+# DEBUG should be False in production
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
+# Railway provides the RAILWAY_PUBLIC_DOMAIN env var automatically
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
+    ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN'))
+
+# --- APP DEFINITION ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -31,10 +31,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    # WhiteNoise for static file serving in production
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be below SecurityMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,44 +62,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend_server.wsgi.application'
 
-# Database: use DATABASE_URL if provided
-if os.getenv('DATABASE_URL'):
-    try:
-        import dj_database_url
-        DATABASES = {
-            'default': dj_database_url.config(default=os.getenv('DATABASE_URL'), conn_max_age=600)
-        }
-    except Exception:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
-        }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+# --- DATABASE ---
+# Uses DATABASE_URL from Railway; falls back to SQLite for local dev
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
+}
 
-AUTH_PASSWORD_VALIDATORS = []
-
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
-
+# --- STATIC FILES (WhiteNoise) ---
 STATIC_URL = '/static/'
-# Collect static files here on deploy
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Prefer explicit CORS origins; keep permissive only for dev
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# --- CORS ---
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 
+# --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
