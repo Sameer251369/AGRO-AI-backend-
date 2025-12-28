@@ -16,6 +16,15 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
     ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN'))
 
+# CSRF Trusted Origins for Railway
+CSRF_TRUSTED_ORIGINS = [
+    'https://agro-ai-backend-production-8c2e.up.railway.app',
+    'https://*.railway.app',
+]
+
+# Required for HTTPS behind proxy (Railway uses this)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # --- APP DEFINITION ---
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -71,6 +80,28 @@ DATABASES = {
     )
 }
 
+# --- PASSWORD VALIDATION ---
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# --- INTERNATIONALIZATION ---
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+
 # --- STATIC FILES (WhiteNoise) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
@@ -82,6 +113,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # --- CORS ---
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 
+# If you want to restrict CORS to specific origins in production, use:
+# CORS_ALLOWED_ORIGINS = [
+#     'https://your-frontend-domain.com',
+# ]
+
 # --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -92,4 +128,5 @@ REST_FRAMEWORK = {
     ),
 }
 
+# --- DEFAULT PRIMARY KEY FIELD TYPE ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
