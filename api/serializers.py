@@ -18,25 +18,18 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class DiseaseSerializer(serializers.ModelSerializer):
     symptoms = serializers.SerializerMethodField()
     treatment = serializers.SerializerMethodField()
-    preventionTips = serializers.SerializerMethodField()
 
     class Meta:
         model = Disease
-        fields = ['id', 'name', 'description', 'category', 'symptoms', 'treatment', 'preventionTips']
+        fields = ['id', 'name', 'description', 'category', 'symptoms', 'treatment', 'prevention_tips']
 
-   def get_symptoms(self, obj):
-        # Look ONLY at the linked unique symptoms
-        qs = obj.symptom_set.all()
-        return [s.text for s in qs]
+    def get_symptoms(self, obj):
+        # This calls the unique symptoms we just linked
+        return [s.text for s in obj.symptom_set.all()]
 
     def get_treatment(self, obj):
-        # Look ONLY at the linked unique prescriptions
-        qs = obj.prescription_set.all()
-        return [p.text for p in qs]
-
-    def get_preventionTips(self, obj):
-        return [s for s in obj.prevention_tips.splitlines() if s.strip()]
-
+        # This calls the unique prescriptions (treatments)
+        return [p.text for p in obj.prescription_set.all()]
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
