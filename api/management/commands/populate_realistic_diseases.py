@@ -81,29 +81,44 @@ class Command(BaseCommand):
 
             ADJECTIVES = [
                 'severe', 'mild', 'rapid', 'chronic', 'acute', 'progressive', 'localized', 'systemic',
-                'sporadic', 'persistent', 'unusual', 'classic', 'notable', 'distinct', 'widespread', 'patchy'
+                'sporadic', 'persistent', 'unusual', 'classic', 'notable', 'distinct', 'widespread', 'patchy',
+                'irregular', 'circular', 'elongated', 'diffuse', 'confluent', 'scattered', 'clustered', 'isolated'
+            ]
+            LOCATIONS = [
+                'leaf edges', 'leaf tips', 'lower leaves', 'upper leaves', 'stem', 'petiole', 'veins', 'entire leaf',
+                'fruit surface', 'root zone', 'shoot apex', 'flower buds', 'seedlings', 'nodes', 'internodes', 'canopy'
+            ]
+            ACTIONS = [
+                'spots', 'lesions', 'necrosis', 'discoloration', 'chlorosis', 'wilting', 'blight', 'mottling', 'cankers',
+                'curling', 'deformation', 'streaks', 'rot', 'softening', 'shriveling', 'abscission', 'browning'
+            ]
+            TREAT_ACTIONS = [
+                'remove infected tissue', 'apply copper-based fungicide', 'apply systemic insecticide', 'increase airflow',
+                'reduce overhead watering', 'improve drainage', 'apply neem oil', 'rotate crops', 'use resistant varieties', 'mulch around base',
+                'sterilize tools', 'monitor regularly', 'consult local extension', 'adjust fertilization', 'avoid overhead irrigation',
+                'apply bactericide', 'use organic amendments', 'solarize soil', 'prune affected branches', 'isolate infected plants'
+            ]
+            ADVICE = [
+                'monitor regularly', 'consult local extension', 'adjust fertilization', 'avoid overhead irrigation',
+                'ensure proper spacing', 'sanitize equipment', 'remove debris', 'apply at dawn', 'repeat after rain', 'combine with biological control'
             ]
 
             for idx, disease in enumerate(all_diseases, start=1):
-                shuffled_symptoms = SYMPTOM_TEMPLATES[:]
-                random.shuffle(shuffled_symptoms)
-                shuffled_treatments = TREATMENT_TEMPLATES[:]
-                random.shuffle(shuffled_treatments)
-
-                # Get plant and pathogen from disease name and category
                 plant = disease.name.split()[0]
                 pathogen = disease.category
 
                 for s_idx in range(symptoms_per):
-                    template = shuffled_symptoms[s_idx % len(shuffled_symptoms)]
                     adjective = random.choice(ADJECTIVES)
-                    # Compose a more unique symptom
-                    text = f"{adjective.capitalize()} {template.lower()} observed in {plant} due to {pathogen}. (variant {idx}-{s_idx+1})"
+                    action = random.choice(ACTIONS)
+                    location = random.choice(LOCATIONS)
+                    # Compose a maximally unique symptom
+                    text = f"{adjective.capitalize()} {action} observed on {location} of {plant} due to {pathogen} ({idx}-{s_idx+1})"
                     symptom_objs.append(Symptom(disease=disease, text=text, order=s_idx))
 
                 for p_idx in range(prescriptions_per):
-                    template = shuffled_treatments[p_idx % len(shuffled_treatments)]
-                    text = f"{template} (variant {idx}-{p_idx+1})"
+                    treat_action = random.choice(TREAT_ACTIONS)
+                    advice = random.choice(ADVICE)
+                    text = f"{treat_action.capitalize()}; {advice} ({idx}-{p_idx+1})"
                     prescription_objs.append(Prescription(disease=disease, text=text, order=p_idx))
 
             # bulk create in reasonable sized chunks to avoid memory spikes
