@@ -23,10 +23,11 @@ if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
 
 # CSRF Trusted Origins - Adding Netlify is critical for POST requests
 CSRF_TRUSTED_ORIGINS = [
-    'https://agro-ai-backend-production-8c2e.up.railway.app',
-    'https://*.railway.app',
-    'https://agroa.netlify.app',  # Added Netlify Production URL
+    "https://agroa.netlify.app",
+    "https://*.netlify.app",
+    "https://agro-ai-backend-production-8c2e.up.railway.app",
 ]
+
 
 # Required for HTTPS behind Railway's proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -51,9 +52,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',        # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware', 
-    'corsheaders.middleware.CorsMiddleware',        # Must stay above CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -107,13 +108,36 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # --- CORS ---
 # Explicitly allowing your Netlify domain for security
+CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = [
     "https://agroa.netlify.app",
     "http://localhost:5173",
 ]
 
-# Fallback to Env Var if you need to toggle "Allow All" for testing
-CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'origin',
+    'dnt',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',  # 👈 this fixes your ERR_FAILED / preflight
+]
+
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+]
+
+
 
 # --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
