@@ -101,11 +101,7 @@ def predict(request):
 
     disease_id = result.get('disease_id')
     disease = Disease.objects.filter(pk=disease_id).first() if disease_id else None
-    symptoms = []
-    prescriptions = []
-    if disease:
-        symptoms = list(disease.symptom_set.values_list('text', flat=True))
-        prescriptions = list(disease.prescription_set.values_list('text', flat=True))
+    disease_data = DiseaseSerializer(disease).data if disease else None
 
     return Response({
         'is_plant': True,
@@ -114,9 +110,10 @@ def predict(request):
         'label': result.get('label'),
         'summary': result.get('summary'),
         'severity': result.get('severity', None),
-        'disease': DiseaseSerializer(disease).data if disease else None,
-        'symptoms': symptoms,
-        'prescriptions': prescriptions,
+        'disease': disease_data,
+        'symptoms': disease_data['symptoms'] if disease_data else [],
+        'treatment': disease_data['treatment'] if disease_data else [],
+        'preventionTips': disease_data['preventionTips'] if disease_data else [],
         'green_ratio': result.get('green_ratio'),
         'discolor_ratio': result.get('discolor_ratio'),
         'edge_ratio': result.get('edge_ratio'),
