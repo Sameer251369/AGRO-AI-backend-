@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from api.models import Disease, Symptom, Prescription
-import random
+import random  # Ensure random is imported to avoid UnboundLocalError
 
 
 PLANTS = [
@@ -77,16 +77,24 @@ class Command(BaseCommand):
             symptom_objs = []
             prescription_objs = []
 
+
             for idx, disease in enumerate(all_diseases, start=1):
-                # deterministic-ish selection of templates
+                # Shuffle templates for each disease for more variation
+                shuffled_symptoms = SYMPTOM_TEMPLATES[:]
+                random.shuffle(shuffled_symptoms)
+                shuffled_treatments = TREATMENT_TEMPLATES[:]
+                random.shuffle(shuffled_treatments)
+
                 for s_idx in range(symptoms_per):
-                    template = SYMPTOM_TEMPLATES[(s_idx) % len(SYMPTOM_TEMPLATES)]
-                    text = f"{template} (example {s_idx+1})"
+                    template = shuffled_symptoms[s_idx % len(shuffled_symptoms)]
+                    # Add a unique phrase to each symptom for this disease
+                    text = f"{template} (variant {idx}-{s_idx+1})"
                     symptom_objs.append(Symptom(disease=disease, text=text, order=s_idx))
 
                 for p_idx in range(prescriptions_per):
-                    template = TREATMENT_TEMPLATES[(p_idx) % len(TREATMENT_TEMPLATES)]
-                    text = f"{template} (recommendation {p_idx+1})"
+                    template = shuffled_treatments[p_idx % len(shuffled_treatments)]
+                    # Add a unique phrase to each prescription for this disease
+                    text = f"{template} (variant {idx}-{p_idx+1})"
                     prescription_objs.append(Prescription(disease=disease, text=text, order=p_idx))
 
             # bulk create in reasonable sized chunks to avoid memory spikes
