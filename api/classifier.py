@@ -30,43 +30,37 @@ def _stable_disease_id_for_image(img_bytes, pk_list):
 
 def classify_image(image_path):
     """Return a dict: is_plant, is_healthy, disease_id, confidence"""
+
+    import logging
     try:
         img = Image.open(image_path).convert('RGB')
-        # Resize for faster processing but keep some detail
         thumb = img.resize((200, 200))
-
         pixels = list(thumb.getdata())
         total = len(pixels)
-
         green_count = 0
         brown_yellow_count = 0
         for (r, g, b) in pixels:
-            # green pixel heuristic: significantly greener than red/blue
             if g > r + 15 and g > b + 15 and g > 80:
                 green_count += 1
-            # brown/yellow heuristic (disease-like discoloration)
-            # detect high-red, low-green pixels (brown/necrosis) or yellowish pixels
             if (r > g + 25 and r > b + 25 and r > 100) or (r > 120 and g > 100 and b < 120):
                 brown_yellow_count += 1
-
         green_ratio = green_count / total
         discolor_ratio = brown_yellow_count / total
-
-        # edge density: use FIND_EDGES to detect textured leaf patterns
         gray = thumb.convert('L')
         edges = gray.filter(ImageFilter.FIND_EDGES)
         edge_pixels = list(edges.getdata())
         edge_count = sum(1 for v in edge_pixels if v > 30)
         edge_ratio = edge_count / len(edge_pixels)
-
-        # Plant detection thresholds (made stricter to reduce false positives on non-plants)
-        # Require a stronger green ratio and slightly higher edge texture, or a clearly green image.
-        # This reduces cases where non-plant images (soil, fruit, backgrounds) are misclassified as plants.
-        is_plant = (green_ratio > 0.15 and edge_ratio > 0.04) or (green_ratio > 0.28)
-
-    except Exception:
-        # If processing fails, assume plant to avoid false non-plant
-        is_plant = True
+        is_plant = (
+            (green_ratio > 0.22 and edge_ratio > 0.06) or
+            (green_ratio > 0.32) or
+            (green_ratio > 0.18 and edge_ratio > 0.09)
+        )
+        if green_ratio < 0.09 and edge_ratio < 0.02:
+            is_plant = False
+    except Exception as e:
+        logging.error(f"Image processing failed: {e}")
+        is_plant = False
         green_ratio = 0.0
         discolor_ratio = 0.0
         edge_ratio = 0.0
@@ -77,7 +71,11 @@ def classify_image(image_path):
             'is_healthy': False,
             'disease_id': None,
             'confidence': 0.98,
-            'label': 'non-plant'
+            'label': 'non-plant',
+            'summary': 'This image does not appear to be a plant.',
+            'green_ratio': round(green_ratio, 4),
+            'discolor_ratio': round(discolor_ratio, 4),
+            'edge_ratio': round(edge_ratio, 4),
         }
 
     # Determine healthy vs diseased using stronger discoloration and edge patterns
@@ -85,6 +83,7 @@ def classify_image(image_path):
     # - discolor_ratio: fraction of brown/yellow pixels
     # - green_ratio: overall greenness
     # - edge_ratio: texture/vein visibility
+
     diseased = False
     # Make disease detection slightly stricter to avoid flagging healthy plants/background noise.
     if discolor_ratio > 0.08:
@@ -92,20 +91,21 @@ def classify_image(image_path):
     elif discolor_ratio > 0.05 and green_ratio < 0.14:
         diseased = True
     elif edge_ratio < 0.01 and green_ratio < 0.10:
-        # very low texture combined with low green can indicate problem areas
         diseased = True
 
     # Get the number of diseases available in DB
     try:
         pk_list = list(Disease.objects.values_list('pk', flat=True))
-    except Exception:
+    except Exception as e:
+        logging.error(f"Could not fetch Disease PKs: {e}")
         pk_list = []
 
     # Read bytes for stable hashing
     try:
         with open(image_path, 'rb') as f:
             b = f.read()
-    except Exception:
+    except Exception as e:
+        logging.error(f"Could not read image bytes: {e}")
         b = hashlib.sha256((image_path or '').encode()).digest()
 
     if not diseased:

@@ -73,11 +73,53 @@ def predict(request):
     file = request.FILES.get('image')
     if not file:
         return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
-    prediction_name = classifier.predict_image(file)
-    disease = Disease.objects.filter(name__icontains=prediction_name).first()
+
+    # Save uploaded image to temp file for classifier
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+        for chunk in file.chunks():
+            tmp.write(chunk)
+        tmp_path = tmp.name
+
+    result = classifier.classify_image(tmp_path)
+
+    # Clean up temp file
+    try:
+        import os
+        os.remove(tmp_path)
+    except Exception:
+        pass
+
+    if not result.get('is_plant'):
+        return Response({
+            'is_plant': False,
+            'message': 'Image does not appear to be a plant.',
+            'confidence': result.get('confidence', 0.98),
+            'label': result.get('label', 'non-plant'),
+            'summary': result.get('summary', ''),
+        })
+
+    disease_id = result.get('disease_id')
+    disease = Disease.objects.filter(pk=disease_id).first() if disease_id else None
+    symptoms = []
+    prescriptions = []
+    if disease:
+        symptoms = list(disease.symptom_set.values_list('text', flat=True))
+        prescriptions = list(disease.prescription_set.values_list('text', flat=True))
+
     return Response({
-        'prediction': prediction_name,
-        'details': DiseaseSerializer(disease).data if disease else "No detailed data found."
+        'is_plant': True,
+        'is_healthy': result.get('is_healthy'),
+        'confidence': result.get('confidence'),
+        'label': result.get('label'),
+        'summary': result.get('summary'),
+        'severity': result.get('severity', None),
+        'disease': DiseaseSerializer(disease).data if disease else None,
+        'symptoms': symptoms,
+        'prescriptions': prescriptions,
+        'green_ratio': result.get('green_ratio'),
+        'discolor_ratio': result.get('discolor_ratio'),
+        'edge_ratio': result.get('edge_ratio'),
     })
 
 @api_view(['POST'])
