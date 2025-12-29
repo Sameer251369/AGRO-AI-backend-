@@ -1,12 +1,11 @@
 from django.db import models
 
 
+
 class Disease(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100, blank=True)
-    symptoms = models.TextField(blank=True, help_text='Line-separated symptoms')
-    treatment = models.TextField(blank=True, help_text='Line-separated treatment steps')
     prevention_tips = models.TextField(blank=True, help_text='Line-separated prevention tips')
 
     def __str__(self):
