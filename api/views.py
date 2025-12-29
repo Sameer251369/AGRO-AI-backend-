@@ -152,115 +152,60 @@ def disease_options(request, pk):
         )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def predict(request):
-    """Predict disease from uploaded plant image."""
-    file = request.FILES.get('image')
-    
-    if not file:
-        return Response(
-            {'error': 'No image provided'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Validate file type
-    if not file.content_type.startswith('image/'):
-        return Response(
-            {'error': 'File must be an image'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Save to temporary file
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-            for chunk in file.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name
-        
-        # Run classification
-        result = classifier.classify_image(tmp_path)
-        
-        # Handle non-plant images
-        if not result.get('is_plant'):
-            return Response({
-                'is_plant': False,
-                'is_healthy': False,
-                'message': result.get('summary', 'Image does not appear to be a plant.'),
-                'confidence': result.get('confidence', 0.95),
-                'label': result.get('label', 'non-plant'),
-                'summary': result.get('summary', ''),
-                'green_ratio': result.get('green_ratio', 0),
-                'discolor_ratio': result.get('discolor_ratio', 0),
-                'edge_ratio': result.get('edge_ratio', 0),
-            })
-        
-        # Handle healthy plants
-        if result.get('is_healthy'):
-            return Response({
-                'is_plant': True,
-                'is_healthy': True,
-                'disease': None,
-                'confidence': result.get('confidence', 0.85),
-                'label': result.get('label', 'healthy'),
-                'summary': result.get('summary', 'Plant appears healthy.'),
-                'symptoms': [],
-                'treatment': [],
-                'preventionTips': [],
-                'green_ratio': result.get('green_ratio', 0),
-                'discolor_ratio': result.get('discolor_ratio', 0),
-                'edge_ratio': result.get('edge_ratio', 0),
-            })
-        
-        # Handle diseased plants
-        disease_id = result.get('disease_id')
-        disease = None
-        disease_data = None
-        
-        if disease_id:
-            try:
-                disease = Disease.objects.select_related().prefetch_related(
-                    'symptom_set', 'prescription_set'
-                ).get(pk=disease_id)
-                disease_data = DiseaseSerializer(disease).data
-            except Disease.DoesNotExist:
-                logger.error(f"Disease ID {disease_id} not found in database")
-        
-        # Build response
-        response_data = {
-            'is_plant': True,
-            'is_healthy': False,
-            'confidence': result.get('confidence', 0.70),
-            'label': result.get('label', 'diseased'),
-            'summary': result.get('summary', 'Disease symptoms detected.'),
-            'severity': result.get('severity', 'unknown'),
-            'disease': disease_data,
-            'symptoms': disease_data.get('symptoms', []) if disease_data else [],
-            'treatment': disease_data.get('treatment', []) if disease_data else [],
-            'preventionTips': disease_data.get('prevention_tips', '').split('\n') if disease_data else [],
-            'green_ratio': result.get('green_ratio', 0),
-            'discolor_ratio': result.get('discolor_ratio', 0),
-            'edge_ratio': result.get('edge_ratio', 0),
-        }
-        
-        return Response(response_data)
-        
-    except Exception as e:
-        logger.error(f"Prediction error: {e}", exc_info=True)
-        return Response(
-            {'error': 'Failed to process image', 'detail': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
-    finally:
-        # Clean up temp file
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception as e:
-                logger.error(f"Failed to remove temp file: {e}")
+    image = request.FILES.get("image")
 
+    if not image:
+        return Response({"error": "Image required"}, status=400)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        for chunk in image.chunks():
+            tmp.write(chunk)
+        path = tmp.name
+
+    try:
+        result = classifier.classify_image(path)
+
+        if not result["is_plant"]:
+            return Response(result)
+
+        disease = Disease.objects.prefetch_related(
+            "symptom_set", "prescription_set"
+        ).get(id=result["disease_id"])
+
+        symptoms = list(disease.symptom_set.values_list("text", flat=True))
+        treatments = list(disease.prescription_set.values_list("text", flat=True))
+
+        random.shuffle(symptoms)
+        random.shuffle(treatments)
+
+        response = {
+            "isPlant": True,
+            "confidence": result["confidence"],
+            "severity": result["severity"],
+            "summary": result["summary"],
+            "disease": {
+                "id": disease.id,
+                "name": disease.name,
+                "category": disease.category,
+                "description": disease.description,
+            },
+            "symptoms": symptoms[: random.randint(3, 6)],
+            "treatment": treatments[: random.randint(3, 6)],
+            "preventionTips": disease.prevention_tips.split("\n")[:5],
+            "metrics": {
+                "green": result["green_ratio"],
+                "discolor": result["discolor_ratio"],
+                "edges": result["edge_ratio"],
+            },
+        }
+
+        return Response(response)
+
+    finally:
+        os.remove(path)
 
 @api_view(['POST'])
 def chat_view(request):
