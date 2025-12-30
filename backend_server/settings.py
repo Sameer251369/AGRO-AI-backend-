@@ -18,11 +18,11 @@ ALLOWED_HOSTS = [
 if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
     ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN'))
 
-# Updated with Vercel URL (No trailing slash)
+# Updated with your actual Production Vercel URL
 CSRF_TRUSTED_ORIGINS = [
+    "https://agro-ai-frontend.vercel.app",  # Your main production URL
     "https://agroa.netlify.app",
     "https://agro-ai-backend-production-8c2e.up.railway.app",
-    "https://agro-ai-frontend-e8wwusti1-sameer251369s-projects.vercel.app",
 ]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -43,7 +43,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Keep this at the very top
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -108,8 +108,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
+    "https://agro-ai-frontend.vercel.app",  # Added your production URL
     "https://agroa.netlify.app",
-    "https://agro-ai-frontend-e8wwusti1-sameer251369s-projects.vercel.app", # Updated
+    "https://agro-ai-frontend-e8wwusti1-sameer251369s-projects.vercel.app",
     "http://localhost:5173",
 ]
 
